@@ -1,0 +1,246 @@
+
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MathMind AI</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg,#10152f,#24205b);
+  color: white;
+  min-height: 100vh;
+  padding: 20px;
+}
+.app { max-width: 520px; margin: auto; }
+h1 { text-align: center; color: #72f1ff; }
+.subtitle { text-align: center; color: #c8c9e8; }
+.card {
+  background: #ffffff12;
+  border: 1px solid #ffffff25;
+  padding: 22px;
+  border-radius: 20px;
+  margin-top: 18px;
+}
+label { display: block; margin: 14px 0 7px; }
+select, input, button {
+  width: 100%;
+  padding: 13px;
+  border-radius: 10px;
+  border: none;
+  font-size: 16px;
+}
+select, input { background: #fff; color: #17172b; }
+button {
+  background: #71eddb;
+  color: #14172b;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 12px;
+}
+button.secondary { background: #d9d8ff; }
+.stats {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: center;
+}
+.stat { flex: 1; background: #ffffff12; padding: 12px 5px; border-radius: 12px; }
+.stat strong { display: block; font-size: 22px; }
+#question { font-size: 35px; text-align: center; margin: 25px 0; }
+#feedback { min-height: 50px; line-height: 1.5; }
+.hidden { display: none; }
+.small { color: #d1d2ed; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>🧠 MathMind AI</h1>
+  <p class="subtitle">Aprende. Pensa. Evolui.</p>
+
+  <div class="card" id="setup">
+    <h2>Escolhe o teu desafio</h2>
+    <label for="mode">Modo de jogo</label>
+    <select id="mode">
+      <option value="child">🧒 Crianças</option>
+      <option value="adult">🧠 Adultos</option>
+    </select>
+
+    <label for="topic">Matéria</label>
+    <select id="topic">
+      <option value="mixed">Todas as operações</option>
+      <option value="add">Adição (+)</option>
+      <option value="sub">Subtração (−)</option>
+      <option value="mul">Multiplicação (×)</option>
+      <option value="div">Divisão (÷)</option>
+      <option value="percent">Percentagens (%)</option>
+    </select>
+    <button onclick="startGame()">Começar a jogar 🚀</button>
+  </div>
+
+  <div class="card hidden" id="game">
+    <div class="stats">
+      <div class="stat">Pontos<strong id="score">0</strong></div>
+      <div class="stat">Nível<strong id="level">1</strong></div>
+      <div class="stat">Acertos<strong id="streak">0</strong></div>
+    </div>
+
+    <p id="progress" class="small"></p>
+    <div id="question">5 + 3 = ?</div>
+    <form id="answerForm">
+      <label for="answer">A tua resposta</label>
+      <input id="answer" type="number" step="any"
+             placeholder="Escreve aqui..." required>
+      <button type="submit">Responder</button>
+    </form>
+    <p id="feedback" aria-live="polite"></p>
+    <button class="secondary" onclick="hint()">💡 Pedir uma pista</button>
+    <button class="secondary" onclick="nextQuestion()">Próxima pergunta →</button>
+    <button onclick="restart()">Terminar e recomeçar</button>
+  </div>
+  <p class="subtitle small">MathMind AI · O teu treinador de matemática</p>
+</div>
+
+<script>
+let score = 0;
+let level = 1;
+let streak = 0;
+let correct = 0;
+let attempts = 0;
+let answer = 0;
+let a = 0, b = 0, op = "+";
+let locked = false;
+let currentTopic = "mixed";
+let mode = "child";
+let hintUsed = false;
+
+function startGame() {
+  mode = document.getElementById("mode").value;
+  currentTopic = document.getElementById("topic").value;
+  score = 0; level = 1; streak = 0;
+  correct = 0; attempts = 0;
+  document.getElementById("setup").classList.add("hidden");
+  document.getElementById("game").classList.remove("hidden");
+  nextQuestion();
+}
+
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function nextQuestion() {
+  locked = false;
+  hintUsed = false;
+  document.getElementById("answer").disabled = false;
+  document.getElementById("answer").value = "";
+  document.getElementById("feedback").textContent = "";
+
+  // IA adaptativa: aumenta a dificuldade com a evolução.
+  const difficulty = Math.min(100, level * 5 +
+    (mode === "adult" ? 10 : 0));
+  const max = mode === "child"
+    ? Math.min(20 + level * 5, 100)
+    : Math.min(100 + level * 20, 1000);
+
+  let topic = currentTopic;
+  if (topic === "mixed") {
+    const choices = mode === "child"
+      ? ["add", "sub", "mul", "div"]
+      : ["add", "sub", "mul", "div", "percent"];
+    topic = choices[randomInt(0, choices.length - 1)];
+  }
+
+  if (topic === "add") {
+    a = randomInt(1, max); b = randomInt(1, max);
+    answer = a + b; op = "+";
+  } else if (topic === "sub") {
+    a = randomInt(1, max); b = randomInt(1, a);
+    answer = a - b; op = "−";
+  } else if (topic === "mul") {
+    const limit = Math.max(5, Math.min(12 + level, 50));
+    a = randomInt(1, limit); b = randomInt(1, limit);
+    answer = a * b; op = "×";
+  } else if (topic === "div") {
+    b = randomInt(1, Math.max(5, Math.min(12 + level, 50)));
+    answer = randomInt(1, Math.max(5, Math.min(12 + level, 50)));
+    a = b * answer; op = "÷";
+  } else {
+    b = [10, 20, 25, 50][randomInt(0, 3)];
+    a = randomInt(1, Math.min(100, 20 + level * 10));
+    answer = a * b / 100;
+    op = "%";
+  }
+
+  document.getElementById("question").textContent =
+    op === "%" ? `${b}% de ${a} = ?` : `${a} ${op} ${b} = ?`;
+  document.getElementById("progress").textContent =
+    "Resolve o problema e aprende com os teus erros.";
+  document.getElementById("answer").focus();
+  updateStats();
+}
+
+document.getElementById("answerForm").addEventListener("submit", function(e) {
+  e.preventDefault();
+  if (locked) return;
+
+  const raw = document.getElementById("answer").value;
+  if (raw.trim() === "") return;
+
+  const given = Number(raw);
+  attempts++;
+  locked = true;
+  document.getElementById("answer").disabled = true;
+
+  if (Math.abs(given - answer) < 0.000001) {
+    correct++;
+    streak++;
+    score += hintUsed ? 5 : 10;
+
+    // Ajusta o nível de acordo com o desempenho.
+    if (correct % 3 === 0) level++;
+
+    document.getElementById("feedback").textContent =
+      "🎉 Excelente! Resposta correta. " +
+      "A IA adaptativa vai preparar novos desafios.";
+  } else {
+    streak = 0;
+    level = Math.max(1, level - 1);
+
+    document.getElementById("feedback").textContent =
+      `Ainda não! A resposta correta é ${answer}. ` +
+      explain();
+  }
+  updateStats();
+});
+
+function explain() {
+  if (op === "+") return `${a} mais ${b} é a soma dos dois números.`;
+  if (op === "−") return `Subtrai ${b} de ${a}.`;
+  if (op === "×") return `Multiplicar ${a} por ${b} é somar ${a} um total de ${b} vezes.`;
+  if (op === "÷") return `${a} dividido por ${b} é ${answer}.`;
+  return `${b}% significa ${b}/100. Multiplica ${a} por ${b} e divide por 100.`;
+}
+
+function hint() {
+  if (locked) return;
+  hintUsed = true;
+  document.getElementById("feedback").textContent =
+    "💡 Pista: " + explain();
+}
+
+function updateStats() {
+  document.getElementById("score").textContent = score;
+  document.getElementById("level").textContent = level;
+  document.getElementById("streak").textContent = streak;
+}
+
+function restart() {
+  document.getElementById("game").classList.add("hidden");
+  document.getElementById("setup").classList.remove("hidden");
+}
+</script>
+</body>
+</html>
